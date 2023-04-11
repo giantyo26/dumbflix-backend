@@ -20,21 +20,6 @@ func HandlerEpisode(EpisodeRepository repositories.EpisodeRepository) *handlerEp
 	return &handlerEpisode{EpisodeRepository}
 }
 
-func (h *handlerEpisode) FindEpisodesByFilm(c echo.Context) error {
-	filmID, _ := strconv.Atoi(c.Param("filmID"))
-	episodes, err := h.EpisodeRepository.FindEpisodesByFilm(filmID)
-
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()})
-	}
-
-	for i, m := range episodes {
-		episodes[i].Episode_Thumbnail = path_file + m.Episode_Thumbnail
-	}
-
-	return c.JSON(http.StatusOK, dto.SuccessResult{Code: http.StatusOK, Data: episodes})
-}
-
 func (h *handlerEpisode) GetEpisodeByFilm(c echo.Context) error {
 	filmID, _ := strconv.Atoi(c.Param("filmID"))
 	episodeID, _ := strconv.Atoi(c.Param("id"))
