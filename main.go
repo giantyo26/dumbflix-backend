@@ -26,7 +26,6 @@ func main() {
 	if errEnv != nil {
 		panic("Failed to load env file")
 	}
-	// var port = os.Getenv("PORT")
 	var port = os.Getenv("PORT")
 
 	e.Static("/uploads", "./uploads")
@@ -35,6 +34,6 @@ func main() {
 	database.RunMigration()
 	routes.RouteInit(e.Group("/api/v1"))
 
-	fmt.Println("server running localhost: " + port)
-	e.Logger.Fatal(e.Start("localhost:" + port))
+	fmt.Println("server running:" + port)
+	e.Logger.Fatal(e.Start(":" + port))
 }
