@@ -2,6 +2,7 @@ package routes
 
 import (
 	"dumbflix-api/handlers"
+	"dumbflix-api/pkg/middleware"
 	"dumbflix-api/pkg/mysql"
 	"dumbflix-api/repositories"
 
@@ -15,7 +16,7 @@ func TransactionRoutes(e *echo.Group) {
 
 	e.GET("/transactions", h.FindTransactions)
 	e.GET("/transactions/:id", h.GetTransaction)
-	e.POST("/transactions", h.AddTransaction)
-	e.PATCH("/transactions/:id", h.EditTransaction)
+	e.POST("/transactions", middleware.Auth(h.AddTransaction))
 	e.DELETE("/transactions/:id", h.DeleteTransaction)
+	e.POST("/notification", h.Notification)
 }

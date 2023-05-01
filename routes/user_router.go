@@ -2,6 +2,7 @@ package routes
 
 import (
 	"dumbflix-api/handlers"
+	"dumbflix-api/pkg/middleware"
 	"dumbflix-api/pkg/mysql"
 	"dumbflix-api/repositories"
 
@@ -14,6 +15,6 @@ func UserRoutes(e *echo.Group) {
 
 	e.GET("/users", h.FindUsers)
 	e.GET("/users/:id", h.GetUser)
-	e.PATCH("/users/:id", h.EditUser)
+	e.PATCH("/users/:id", middleware.UploadImage(h.EditUser))
 	e.DELETE("/users/:id", h.DeleteUser)
 }

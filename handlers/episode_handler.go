@@ -1,13 +1,18 @@
 package handlers
 
 import (
+	"context"
 	episodedto "dumbflix-api/dto/episode"
 	dto "dumbflix-api/dto/result"
 	"dumbflix-api/models"
 	"dumbflix-api/repositories"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
@@ -20,6 +25,17 @@ func HandlerEpisode(EpisodeRepository repositories.EpisodeRepository) *handlerEp
 	return &handlerEpisode{EpisodeRepository}
 }
 
+func (h *handlerEpisode) FindEpisodesByFilm(c echo.Context) error {
+	filmID, _ := strconv.Atoi(c.Param("filmID"))
+	episodes, err := h.EpisodeRepository.FindEpisodesByFilm(filmID)
+
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, dto.SuccessResult{Code: http.StatusOK, Data: episodes})
+}
+
 func (h *handlerEpisode) GetEpisodeByFilm(c echo.Context) error {
 	filmID, _ := strconv.Atoi(c.Param("filmID"))
 	episodeID, _ := strconv.Atoi(c.Param("id"))
@@ -28,8 +44,6 @@ func (h *handlerEpisode) GetEpisodeByFilm(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()})
 	}
-
-	episode.Episode_Thumbnail = path_file + episode.Episode_Thumbnail
 
 	return c.JSON(http.StatusOK, dto.SuccessResult{Code: http.StatusOK, Data: episode})
 }
@@ -63,9 +77,24 @@ func (h *handlerEpisode) AddEpisode(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()})
 	}
 
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
+
+	// Add your Cloudinary credentials ...
+	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Upload file to Cloudinary ...
+	resp, err := cld.Upload.Upload(ctx, imageFile, uploader.UploadParams{Folder: "dumbflix"})
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	episode := models.Episode{
 		Title:             request.Title,
-		Episode_Thumbnail: request.Episode_Thumbnail,
+		Episode_Thumbnail: resp.SecureURL,
 		Episode_Link:      request.Episode_Link,
 		FilmID:            request.FilmID,
 	}
@@ -91,6 +120,22 @@ func (h *handlerEpisode) EditEpisode(c echo.Context) error {
 		Episode_Link:      c.FormValue("video"),
 		FilmID:            film_id,
 	}
+
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
+
+	// Add your Cloudinary credentials ...
+	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Upload file to Cloudinary ...
+	resp, err := cld.Upload.Upload(ctx, imageFile, uploader.UploadParams{Folder: "dumbflix"})
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	// Get the episode from the repository by ID
 	episode, _ := h.EpisodeRepository.GetEpisode(id)
 
@@ -99,7 +144,7 @@ func (h *handlerEpisode) EditEpisode(c echo.Context) error {
 	}
 
 	if request.Episode_Thumbnail != "" {
-		episode.Episode_Thumbnail = request.Episode_Thumbnail
+		episode.Episode_Thumbnail = resp.SecureURL
 	}
 
 	if request.Episode_Link != "" {
@@ -141,6 +186,5 @@ func convertResponseEpisode(u models.Episode) episodedto.EpisodeResponse {
 		Thumbnail: u.Episode_Thumbnail,
 		VideoLink: u.Episode_Link,
 		FilmID:    u.FilmID,
-		Film:      models.Film(u.Film),
 	}
 }

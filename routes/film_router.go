@@ -14,7 +14,7 @@ func FilmRoutes(e *echo.Group) {
 
 	h := handlers.HandlerFilm(FilmRepository)
 
-	e.GET("/films", middleware.Auth(h.FindFilms))
+	e.GET("/films", h.FindFilms)
 	e.GET("/films/:id", middleware.Auth(h.GetFilm))
 	e.POST("/films", middleware.Auth(middleware.UploadImage(h.AddFilm)))
 	e.PATCH("/films/:id", middleware.Auth(middleware.UploadImage(h.EditFilm)))

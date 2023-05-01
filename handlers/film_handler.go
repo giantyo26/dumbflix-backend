@@ -1,18 +1,21 @@
 package handlers
 
 import (
+	"context"
 	filmdto "dumbflix-api/dto/film"
 	dto "dumbflix-api/dto/result"
 	"dumbflix-api/models"
 	repository "dumbflix-api/repositories"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
-
-var path_file = "http://localhost:5500/uploads/"
 
 type handlerFilm struct {
 	FilmRepository repository.FilmRepository
@@ -29,7 +32,7 @@ func (h *handlerFilm) FindFilms(c echo.Context) error {
 	}
 
 	for i, p := range films {
-		films[i].Film_Thumbnail = path_file + p.Film_Thumbnail
+		films[i].Film_Thumbnail = p.Film_Thumbnail
 	}
 
 	return c.JSON(http.StatusOK, dto.SuccessResult{Code: http.StatusOK, Data: films})
@@ -42,8 +45,6 @@ func (h *handlerFilm) GetFilm(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()})
 	}
-
-	film.Film_Thumbnail = path_file + film.Film_Thumbnail
 
 	return c.JSON(http.StatusOK, dto.SuccessResult{Code: http.StatusOK, Data: film})
 }
@@ -61,15 +62,29 @@ func (h *handlerFilm) AddFilm(c echo.Context) error {
 		Description:    c.FormValue("description"),
 	}
 
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
+
+	// Add your Cloudinary credentials ...
+	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Upload file to Cloudinary ...
+	resp, err := cld.Upload.Upload(ctx, imageFile, uploader.UploadParams{Folder: "dumbflix"})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	
 	validation := validator.New()
-	err := validation.Struct(request)
+	err = validation.Struct(request)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()})
 	}
 
 	film := models.Film{
 		Title:          request.Title,
-		Film_Thumbnail: request.Film_Thumbnail,
+		Film_Thumbnail: resp.SecureURL,
 		Year:           request.Year,
 		CategoryID:     request.CategoryID,
 		Description:    request.Description,
@@ -99,13 +114,28 @@ func (h *handlerFilm) EditFilm(c echo.Context) error {
 		Description:    c.FormValue("description"),
 	}
 
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
+
+	// Add your Cloudinary credentials ...
+	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Upload file to Cloudinary ...
+	resp, err := cld.Upload.Upload(ctx, imageFile, uploader.UploadParams{Folder: "dumbflix"})
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	film, _ := h.FilmRepository.GetFilm(id)
 
 	if request.Title != "" {
 		film.Title = request.Title
 	}
 	if request.Film_Thumbnail != "" {
-		film.Film_Thumbnail = request.Film_Thumbnail
+		film.Film_Thumbnail = resp.SecureURL
 	}
 	if request.Year != 0 {
 		film.Year = request.Year
@@ -124,7 +154,9 @@ func (h *handlerFilm) EditFilm(c echo.Context) error {
 		CategoryID:     request.CategoryID,
 		Description:    request.Description,
 	}
-	editedFilm, err := h.FilmRepository.EditFilm(film)
+
+	editedFilm, err = h.FilmRepository.EditFilm(film)
+
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()})
 	}

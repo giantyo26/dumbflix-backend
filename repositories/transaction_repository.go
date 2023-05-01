@@ -11,7 +11,7 @@ type TransactionRepository interface {
 	GetTransaction(ID int) (models.Transaction, error)
 	GetTransactionByUser(UserID int) ([]models.Transaction, error)
 	AddTransaction(transaction models.Transaction) (models.Transaction, error)
-	EditTransaction(transaction models.Transaction) (models.Transaction, error)
+	EditTransaction(Status string, ID int) (models.Transaction, error)
 	DeleteTransaction(transaction models.Transaction) (models.Transaction, error)
 }
 
@@ -47,8 +47,22 @@ func (r *repository) AddTransaction(transaction models.Transaction) (models.Tran
 	return transaction, err
 }
 
-func (r *repository) EditTransaction(transaction models.Transaction) (models.Transaction, error) {
-	err := r.db.Preload("User").Save(&transaction).Error
+func (r *repository) EditTransaction(status string, ID int) (models.Transaction, error) {
+	var transaction models.Transaction
+	r.db.Preload("User").First(&transaction, ID)
+
+	if status != transaction.Status && status == "success" {
+		var user models.User
+		r.db.First(&user, transaction.User.ID)
+		user.Subscribe = true
+		r.db.Save(&user)
+	}
+
+	var transactionData models.Transaction
+	r.db.First(&transactionData, ID)
+	transaction.Status = status
+
+	err := r.db.Save(&transactionData).Error
 
 	return transaction, err
 }
