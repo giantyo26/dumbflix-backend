@@ -52,7 +52,7 @@ func (h *handlerAuth) Register(c echo.Context) error {
 		Phone:     request.Phone,
 		Address:   request.Address,
 		Role:      "user",
-		Subscribe: false,
+		Subscribe: "false",
 	}
 
 	data, err := h.AuthRepository.Register(user)

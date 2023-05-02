@@ -51,7 +51,8 @@ func (r *repository) EditTransaction(status string, ID int) (models.Transaction,
 	var transaction models.Transaction
 	r.db.Preload("User").First(&transaction, ID)
 
-	if status != transaction.Status && status == "success" {
+	transaction.Status = status
+	if status == "success" {
 		var user models.User
 		r.db.First(&user, transaction.User.ID)
 		user.Subscribe = true

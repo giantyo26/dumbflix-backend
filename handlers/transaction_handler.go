@@ -14,7 +14,6 @@ import (
 	"fmt"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/snap"
@@ -56,12 +55,6 @@ func (h *handlerTransaction) AddTransaction(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()})
 	}
 
-	userLogin := c.Get("userLogin")
-	userId := userLogin.(jwt.MapClaims)["id"].(float64)
-
-	Startdate := time.Now()
-	Duedate := time.Now().Add(time.Hour * 24 * time.Duration(request.Days))
-
 	validation := validator.New()
 	err := validation.Struct(request)
 	if err != nil {
@@ -71,20 +64,22 @@ func (h *handlerTransaction) AddTransaction(c echo.Context) error {
 	var transactionIsMatch = false
 	var transactionId int
 	for !transactionIsMatch {
-		transactionId = int(time.Now().Unix())
 		transactionData, _ := h.TransactionRepository.GetTransaction(transactionId)
 		if transactionData.ID == 0 {
 			transactionIsMatch = true
 		}
 	}
 
+	Startdate := time.Now()
+	Duedate := time.Now().Add(time.Hour * 24 * time.Duration(request.Days))
+
 	transaction := models.Transaction{
 		ID:        transactionId,
 		StartDate: Startdate,
 		DueDate:   Duedate,
-		UserID:    int(userId),
+		UserID:    request.UserID,
 		Price:     request.Price,
-		Status:    "pending",
+		Status:    request.Status,
 	}
 
 	dataTransactions, err := h.TransactionRepository.AddTransaction(transaction)
@@ -148,6 +143,7 @@ func (h *handlerTransaction) Notification(c echo.Context) error {
 	fmt.Print("This the payload:", notificationPayload)
 
 	transaction, _ := h.TransactionRepository.GetTransaction(order_id)
+
 	if transactionStatus == "capture" {
 		if fraudStatus == "challenge" {
 			h.TransactionRepository.EditTransaction("pending", order_id)
